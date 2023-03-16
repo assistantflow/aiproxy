@@ -27,26 +27,28 @@ func init() {
 	prometheus.Register(tokenUsed)
 }
 
-func modifyResponse(key string) func(*http.Response) error {
+func modifyResponse(key string, stream bool) func(*http.Response) error {
 	return func(r *http.Response) error {
 		if r.StatusCode == http.StatusOK {
-			var b bytes.Buffer
-			cb := io.TeeReader(r.Body, &b)
-			var s struct {
-				Usage struct {
-					PromptTokens     int `json:"prompt_tokens"`
-					CompletionTokens int `json:"completion_tokens"`
-					TotalTokens      int `json:"total_tokens"`
-				} `json:"usage"`
+			if !stream {
+				var b bytes.Buffer
+				cb := io.TeeReader(r.Body, &b)
+				var s struct {
+					Usage struct {
+						PromptTokens     int `json:"prompt_tokens"`
+						CompletionTokens int `json:"completion_tokens"`
+						TotalTokens      int `json:"total_tokens"`
+					} `json:"usage"`
+				}
+				err := json.NewDecoder(cb).Decode(&s)
+				if err != nil {
+					log.Error().Err(err).Msg("decode proxy response failed")
+				} else {
+					tokenUsed.WithLabelValues(key).Add(float64(s.Usage.TotalTokens))
+					log.Debug().Str("key", key).Interface("usage", s).Send()
+				}
+				r.Body = io.NopCloser(&b)
 			}
-			err := json.NewDecoder(cb).Decode(&s)
-			if err != nil {
-				log.Error().Err(err).Msg("decode proxy response failed")
-			} else {
-				tokenUsed.WithLabelValues(key).Add(float64(s.Usage.TotalTokens))
-				log.Debug().Str("key", key).Interface("usage", s).Send()
-			}
-			r.Body = io.NopCloser(&b)
 		}
 		return nil
 	}
@@ -69,6 +71,16 @@ func Proxy(uri, prefix string) gin.HandlerFunc {
 
 	p := httputil.NewSingleHostReverseProxy(r)
 	return func(c *gin.Context) {
+		var b bytes.Buffer
+		cb := io.TeeReader(c.Request.Body, &b)
+		var d struct {
+			Stream bool `json:"stream"`
+		}
+		if err := json.NewDecoder(cb).Decode(&d); err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		c.Request.Body = io.NopCloser(&b)
 		p.Director = func(req *http.Request) {
 			req.Host = r.Host
 			req.URL.Scheme = r.Scheme
@@ -78,9 +90,8 @@ func Proxy(uri, prefix string) gin.HandlerFunc {
 				req.URL.Path = strings.TrimPrefix(c.Request.URL.Path, tp)
 			}
 		}
-		p.ModifyResponse = modifyResponse(parseAuth(c.GetHeader("Authorization")))
+		p.ModifyResponse = modifyResponse(parseAuth(c.GetHeader("Authorization")), d.Stream)
 		p.ServeHTTP(c.Writer, c.Request)
-
 		c.Next()
 	}
 }
