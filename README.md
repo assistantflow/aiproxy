@@ -9,7 +9,7 @@ To start a proxy server with a custom prefix, use the following command:
 $ go run ./cmd/proxy/main.go --prefix=openai
 ```
 
-To make a request, use the following command(please note that you need to replace `$OPENAI_API_KEY` with your actual OpenAI API key):
+To make a request, use the following command:
 ```
 $ curl http://localhost:8080/openai/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -43,3 +43,4 @@ The response will look like this:
   ]
 }
 ```
+Please note that you need to replace `$OPENAI_API_KEY` with your actual OpenAI API key.
