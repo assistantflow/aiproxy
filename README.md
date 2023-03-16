@@ -44,3 +44,15 @@ The response will look like this:
 }
 ```
 Please note that you need to replace `$OPENAI_API_KEY` with your actual OpenAI API key.
+
+## Expose promtheus metrics
+
+```
+$ curl http://localhost:2112/metrics
+
+The response will look like this:
+
+# HELP token_used_total How many token used, partitioned by api key.
+# TYPE token_used_total counter
+token_used_total{key="$OPENAI_API_KEY"} 12
+```
