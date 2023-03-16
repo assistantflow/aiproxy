@@ -48,13 +48,13 @@ func parseAuth(s string) string {
 }
 
 func Proxy(uri, prefix string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		r, err := url.Parse(uri)
-		if err != nil {
-			panic(err)
-		}
+	r, err := url.Parse(uri)
+	if err != nil {
+		panic(err)
+	}
 
-		p := httputil.NewSingleHostReverseProxy(r)
+	p := httputil.NewSingleHostReverseProxy(r)
+	return func(c *gin.Context) {
 		p.Director = func(req *http.Request) {
 			req.Host = r.Host
 			req.URL.Scheme = r.Scheme
@@ -67,6 +67,6 @@ func Proxy(uri, prefix string) gin.HandlerFunc {
 		p.ModifyResponse = modifyResponse(parseAuth(c.GetHeader("Authorization")))
 		p.ServeHTTP(c.Writer, c.Request)
 
-		c.Abort()
+		c.Next()
 	}
 }
