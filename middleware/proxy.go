@@ -11,8 +11,21 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
+
+var tokenUsed = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "token_used_total",
+		Help: "How many token used, partitioned by api key.",
+	},
+	[]string{"key"},
+)
+
+func init() {
+	prometheus.Register(tokenUsed)
+}
 
 func modifyResponse(key string) func(*http.Response) error {
 	return func(r *http.Response) error {
@@ -30,6 +43,7 @@ func modifyResponse(key string) func(*http.Response) error {
 			if err != nil {
 				log.Error().Err(err).Msg("decode proxy response failed")
 			} else {
+				tokenUsed.WithLabelValues(key).Add(float64(s.Usage.TotalTokens))
 				log.Debug().Str("key", key).Interface("usage", s).Send()
 			}
 			r.Body = io.NopCloser(&b)
