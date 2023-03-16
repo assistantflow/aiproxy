@@ -3,6 +3,7 @@ module github.com/douglarek/ai-proxy
 go 1.20
 
 require (
+	github.com/gin-contrib/logger v0.2.5
 	github.com/gin-gonic/gin v1.9.0
 	github.com/rs/zerolog v1.29.0
 )
