@@ -63,38 +63,35 @@ func parseAuth(s string) string {
 	return k
 }
 
-func ProxyFunc(uri, prefix string) http.HandlerFunc {
-	remoteURL, err := url.Parse(uri)
+func Proxy(uri, prefix string) gin.HandlerFunc {
+	r, err := url.Parse(uri)
 	if err != nil {
 		panic(err)
 	}
 
-	p := httputil.NewSingleHostReverseProxy(remoteURL)
-	return func(w http.ResponseWriter, r *http.Request) {
+	p := httputil.NewSingleHostReverseProxy(r)
+	return func(c *gin.Context) {
 		var b bytes.Buffer
-		cb := io.TeeReader(r.Body, &b)
+		cb := io.TeeReader(c.Request.Body, &b)
 		var d struct {
 			Stream bool `json:"stream"`
 		}
 		if err := json.NewDecoder(cb).Decode(&d); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
-		r.Body = io.NopCloser(&b)
+		c.Request.Body = io.NopCloser(&b)
 		p.Director = func(req *http.Request) {
-			req.Host = remoteURL.Host
-			req.URL.Scheme = remoteURL.Scheme
-			req.URL.Host = remoteURL.Host
+			req.Host = r.Host
+			req.URL.Scheme = r.Scheme
+			req.URL.Host = r.Host
 			tp := filepath.Join("/", prefix)
 			if tp != "/" {
-				req.URL.Path = strings.TrimPrefix(req.URL.Path, tp)
+				req.URL.Path = strings.TrimPrefix(c.Request.URL.Path, tp)
 			}
 		}
-		p.ModifyResponse = modifyResponse(parseAuth(r.Header.Get("Authorization")), d.Stream)
-		p.ServeHTTP(w, r)
+		p.ModifyResponse = modifyResponse(parseAuth(c.GetHeader("Authorization")), d.Stream)
+		p.ServeHTTP(c.Writer, c.Request)
+		c.Next()
 	}
-}
-
-func Proxy(uri, prefix string) gin.HandlerFunc {
-	return gin.WrapF(ProxyFunc(uri, prefix))
 }
