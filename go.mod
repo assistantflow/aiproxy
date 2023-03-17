@@ -1,4 +1,4 @@
-module github.com/douglarek/ai-proxy
+module github.com/assistantflow/aiproxy
 
 go 1.20
 
