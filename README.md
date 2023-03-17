@@ -45,7 +45,7 @@ The response will look like this:
 ```
 Please note that you need to replace `$OPENAI_API_KEY` with your actual OpenAI API key.
 
-## Expose promtheus metrics
+## Expose prometheus metrics
 
 ```
 $ curl http://localhost:2112/metrics
