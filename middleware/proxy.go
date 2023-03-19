@@ -76,7 +76,7 @@ func Proxy(uri, prefix string) gin.HandlerFunc {
 		var d struct {
 			Stream bool `json:"stream"`
 		}
-		if err := json.NewDecoder(cb).Decode(&d); err != nil {
+		if err := json.NewDecoder(cb).Decode(&d); err != nil && err != io.EOF { // if no request body, err will be EOF
 			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
