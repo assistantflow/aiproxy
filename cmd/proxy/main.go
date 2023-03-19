@@ -52,9 +52,7 @@ func main() {
 
 	g := r.Group(filepath.Join("/", *prefixPath))
 	rp := middleware.Proxy(*aiURI, *prefixPath)
-	g.GET("*p", rp)
-	g.POST("*p", rp)
-	g.DELETE("*p", rp)
+	g.Any("*p", rp)
 
 	go startProm()
 
